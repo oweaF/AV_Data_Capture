@@ -18,17 +18,20 @@ CLI 版本
 
 
 **日本电影元数据 抓取工具 | 刮削器**，配合本地影片管理软件 Emby, Jellyfin, Kodi 等管理本地影片，该软件起到分类与元数据（metadata）抓取作用，利用元数据信息来分类，供本地影片分类整理使用。  
-##### 本地电影刮削与整理一体化解决方案
+#### 本地电影刮削与整理一体化解决方案
 
 # 目录
 * [声明](#声明)
 * [FAQ](#FAQ)
-* [故事](#故事)
 * [效果图](#效果图)
+* [下载](#下载)
 * [如何使用](#如何使用)
-    * [下载](#下载)
     * [简要教程](#简要教程)
 * [完整文档](#完整文档)
+    * [运行参数](#运行参数)
+        * [拖动法/奇葩番号](#拖动法)
+        * [配置文件选择](#配置文件选择)
+        * [程序退出选择参数](#程序退出选择参数)
     * [模块安装](#模块安装)
     * [配置](#配置configini)
     * [多目录影片处理](#多目录影片处理)
@@ -38,14 +41,26 @@ CLI 版本
 * [写在后面](#写在后面)
 
 # 声明
+**当你运行了本软件，即代表你接受了以下条款**
 * 本软件仅供**技术交流，学术交流**使用
 * 本软件作者编写出该软件旨在学习 Python ，提高编程水平
-* 用户在使用本软件前，请用户自觉遵守当地法律法规，如果本软件使用过程中存在违反当地法律法规的行为，请勿使用该软件
-* 用户在使用本软件时，若产生一切违法行为由用户承担
+* 用户在使用本软件前，请用户了解并遵守当地法律法规，如果本软件使用过程中存在违反当地法律法规的行为，请勿使用该软件
+* 用户在使用本软件时，若用户在当地产生一切违法行为由用户承担
 * 严禁用户将本软件使用于商业和个人其他意图
-* 本软件作者保留最终决定权和最终解释权
+* 本软件作者yoshiko2保留最终决定权和最终解释权
 
 **若用户不同意上述条款任意一条，请勿使用本软件**
+
+---
+**When you run the software, you accept the following terms**
+* This software is only for **technical exchange and academic exchange**
+* The software author wrote this software to learn Python and improve programming
+* Before using this software, please understand and abide by local laws and regulations. If there is any violation of local laws and regulations during the use of this software, please do not use this software
+* When the user uses this software, if the user has any illegal acts in the local area, the user shall bear
+* It is strictly forbidden for users to use this software for commercial and personal intentions
+* The author of this software yoshiko2 reserves the right of final decision and final interpretation
+
+**If the user does not agree with any of the above terms, please do not use this software**
 
 # FAQ
 ### 软件能下片吗？
@@ -64,21 +79,14 @@ CLI 版本
 ![preview_picture_1](https://i.loli.net/2019/07/04/5d1cf9bb1b08b86592.jpg)
 ![preview_picture_2](https://i.loli.net/2019/07/04/5d1cf9bb2696937880.jpg)
 
+# 下载
+[![](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-windows-brightgreen.svg?style=for-the-badge&logo=windows)](https://github.com/yoshiko2/AV_Data_Capture/releases)
+[![](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-linux-blue.svg?style=for-the-badge&logo=linux)](https://github.com/yoshiko2/AV_Data_Capture/releases)  
+
+### MacOS，FreeBSD等unix系操作系统 | For Advenced User
+* 请clone源码包运行，并手动安装Python3环境
+
 # 如何使用
-## 下载
-* release的程序可脱离**python环境**运行，可跳过 [模块安装](#模块安装)
-### Windows
-Release 下载地址(**仅限Windows**):
-
-[![](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-windows-blue.svg?style=for-the-badge&logo=windows)](https://github.com/yoshiko2/AV_Data_Capture/releases)
-
-* 若 Windows 用户需要运行源代码版本，请安装 Windows Python 环境:[点击前往](https://www.python.org/downloads/windows/) 选中 executable installer 下载
-
-### MacOS, Linux
-* MacOS, Linux 用户请下载源码包运行
-* MacOS Python环境：开箱即用，[可选安装最新版本](https://docs.brew.sh/Homebrew-and-Python)
-* Linux Python环境：开箱即用，可选安装最新版本，恕 Linux 版本众多请自行搜索
-
 ## 简要教程:
 1. 把软件拉到和电影的同一目录
 2. 设置 config.ini 文件的代理（路由器拥有自动代理功能的可以把 proxy= 后面内容去掉）
@@ -94,7 +102,7 @@ Release 下载地址(**仅限Windows**):
 
 在终端 cmd/Powershell/Terminal 中输入以下代码来安装模块
 
-```python
+```
 pip install requests pyquery lxml Beautifulsoup4 pillow
 ```
 
@@ -165,14 +173,12 @@ update_check=1
 0为关闭，1为开启，不建议关闭
 
 ---
-### 媒体库选择 
+### 刮削网站优先级
 ```
-[media]
-media_warehouse=emby
-#emby plex kodi
+[priority]
+website=javbus,javdb,fanza,xcity,mgstage,fc2,avsox,jav321
 ```
-可选择emby, plex, kodi
-如果是PLEX，请安装插件：```XBMCnfoMoviesImporter```
+用```,```英文逗号分开网站，刮削顺序从左往右
 
 ---
 ### 排除指定字符和目录
@@ -204,7 +210,7 @@ naming_rule=number+'-'+title
 已有默认配置
 
 ---
-#### 命名参数
+### 命名参数
 ```
 title = 片名
 actor = 演员
@@ -221,13 +227,17 @@ runtime = 时长
 
 上面的参数以下都称之为**变量**
 
-#### 例子：
+### 例子：
 自定义规则方法：有两种元素，变量和字符，无论是任何一种元素之间连接必须要用加号 **+** ，比如：```'naming_rule=['+number+']-'+title```，其中冒号 ' ' 内的文字是字符，没有冒号包含的文字是变量，元素之间连接必须要用加号 **+** 
 
+### locaton_rule
+该为影片路径规则
 目录结构规则：默认 ```location_rule=actor+'/'+number```
 
 **不推荐修改时在这里添加 title**，有时 title 过长，因为 Windows API 问题，抓取数据时新建文件夹容易出错。
 
+### naming_rule
+该为媒体库内标题的命名规则规则，NFO文件内标题<title>命名规则
 影片命名规则：默认 ```naming_rule=number+'-'+title```
 
 **在 Emby, Kodi等本地媒体库显示的标题，不影响目录结构下影片文件的命名**，依旧是 番号+后缀。
@@ -242,8 +252,25 @@ update_check=1
 
 1为开，0为关
 
-## 多目录影片处理
-可以在多个有影片目录的父目录下搜索影片后缀，然后剪切到和程序同一目录下  
+## 运行参数
+以下运行参数均为可选参数
+### 拖动法
+如果遇到番号比较奇葩的影片，同时存在于可刮削的网站，可用拖动影片之主程序刮削，或者输入以下
+```
+AV_Data_Capture xxx-xxx-xxx.mp4
+```
+### 配置文件选择
+可以用```-c```或者```--config```选择其他配置文件  
+默认值为```config.ini```
+```
+AV_Data_Capture -c config_other.ini
+```
+### 程序自动退出
+
+```
+AV_Data_Capture -a
+```
+输入参数即可在刮削结束后自动结束程序
 
 ## 多集影片处理
 **建议使用视频合并合并为一个视频文件**
@@ -285,17 +312,15 @@ update_check=1
 
 ---
 ### 关于番号提取失败或者异常
-**目前可以提取元素的影片:JAVBUS上有元数据的电影，素人系列:300Maan,259luxu,siro等,FC2系列**
+**可以提取元数据的网站:avsox, javbus, javdb, dmm(fanza), fc2, jav321, mgstage(素人)**
 
->下一张图片来自 Pockies 的 blog 原作者已授权
-
-![](https://raw.githubusercontent.com/Pockies/pic/master/741f9461gy1g1cxc31t41j20i804zdgo.jpg)
-
-目前作者已经完善了番号提取机制，功能较为强大，可提取上述文件名的的番号，如果出现提取失败或者异常的情况，请用以下规则命名
-
-
+目前作者已经完善了番号提取机制，功能较为强大，各大网站的影片请用以下规则命名（dmm(fanza)下载的影片除外）
 ```
 COSQ-004.mp4
+```
+对于dmm(fanza)上下好的电影，请使用影片cid命名，示例如下
+```
+kawd00969.mp4
 ```
 
 条件：文件名中间要有下划线或者减号"_","-"，没有多余的内容只有番号为最佳，可以让软件更好获取元数据

@@ -96,6 +96,18 @@ def getRelease(text):
         result = html.xpath(
             "//td[contains(text(),'発売日：')]/following-sibling::td/text()"
         )[0].lstrip("\n")
+    if result == "----":
+        try:
+            result = html.xpath(
+                "//td[contains(text(),'配信開始日：')]/following-sibling::td/a/text()"
+            )[0].lstrip("\n")
+        except:
+            try:
+                result = html.xpath(
+                    "//td[contains(text(),'配信開始日：')]/following-sibling::td/text()"
+                )[0].lstrip("\n")
+            except:
+                pass
     return result
 
 
@@ -177,6 +189,8 @@ def main(number):
         "https://www.dmm.co.jp/mono/dvd/-/detail/=/cid=",
         "https://www.dmm.co.jp/digital/anime/-/detail/=/cid=",
         "https://www.dmm.co.jp/mono/anime/-/detail/=/cid=",
+        "https://www.dmm.co.jp/digital/videoc/-/detail/=/cid=",
+        "https://www.dmm.co.jp/digital/nikkatsu/-/detail/=/cid=",
     ]
     chosen_url = ""
     for url in fanza_urls:
@@ -193,7 +207,7 @@ def main(number):
         # so get the hinban first, and then pass it to following functions
         fanza_hinban = getNum(htmlcode)
         data = {
-            "title": getTitle(htmlcode).strip(getActor(htmlcode)),
+            "title": getTitle(htmlcode).strip(),
             "studio": getStudio(htmlcode),
             "outline": getOutline(htmlcode),
             "runtime": getRuntime(htmlcode),
@@ -220,6 +234,35 @@ def main(number):
         data, ensure_ascii=False, sort_keys=True, indent=4, separators=(",", ":")
     )  # .encode('UTF-8')
     return js
+
+
+def main_htmlcode(number):
+    # fanza allow letter + number + underscore, normalize the input here
+    # @note: I only find the usage of underscore as h_test123456789
+    fanza_search_number = number
+    # AV_Data_Capture.py.getNumber() over format the input, restore the h_ prefix
+    if fanza_search_number.startswith("h-"):
+        fanza_search_number = fanza_search_number.replace("h-", "h_")
+
+    fanza_search_number = re.sub(r"[^0-9a-zA-Z_]", "", fanza_search_number).lower()
+
+    fanza_urls = [
+        "https://www.dmm.co.jp/digital/videoa/-/detail/=/cid=",
+        "https://www.dmm.co.jp/mono/dvd/-/detail/=/cid=",
+        "https://www.dmm.co.jp/digital/anime/-/detail/=/cid=",
+        "https://www.dmm.co.jp/mono/anime/-/detail/=/cid=",
+        "https://www.dmm.co.jp/digital/videoc/-/detail/=/cid=",
+        "https://www.dmm.co.jp/digital/nikkatsu/-/detail/=/cid=",
+    ]
+    chosen_url = ""
+    for url in fanza_urls:
+        chosen_url = url + fanza_search_number
+        htmlcode = get_html(chosen_url)
+        if "404 Not Found" not in htmlcode:
+            break
+    if "404 Not Found" in htmlcode:
+        return json.dumps({"title": "",})
+    return htmlcode
 
 
 if __name__ == "__main__":

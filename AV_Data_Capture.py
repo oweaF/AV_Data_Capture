@@ -1,62 +1,53 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-import glob
-import os
-import time
-import re
-from ADC_function import *
-from core import *
-import json
-import shutil
-from configparser import ConfigParser
 import argparse
+from core import *
 
 
-def UpdateCheck(version):
-    if UpdateCheckSwitch() == '1':
-        html2 = get_html('https://raw.githubusercontent.com/yoshiko2/AV_Data_Capture/master/update_check.json')
-        html = json.loads(str(html2))
+def check_update(local_version):
+    data = json.loads(get_html("https://api.github.com/repos/yoshiko2/AV_Data_Capture/releases/latest"))
 
-        if not version == html['version']:
-            print('[*]                  * New update ' + html['version'] + ' *')
-            print('[*]                     ↓ Download ↓')
-            print('[*] ' + html['download'])
-            print('[*]======================================================')
-    else:
-        print('[+]Update Check disabled!')
+    try:
+        remote = float(data["tag_name"])
+        local = float(local_version)
+    except ValueError:
+        print("[-] Check update failed! Skipped.")
+        return
 
-def argparse_get_file():
+    download_url = data["html_url"]
+
+    if local < remote:
+        line1 = "* New update " + str(remote) + " *"
+        print("[*]" + line1.center(54))
+        print("[*]" + "↓ Download ↓".center(54))
+        print("[*] " + download_url)
+        print("[*]======================================================")
+
+
+def argparse_function() -> [str, str, bool]:
     parser = argparse.ArgumentParser()
-    parser.add_argument("file", default='',nargs='?', help="Write the file path on here")
+    parser.add_argument("file", default='', nargs='?', help="Single Movie file path.")
+    parser.add_argument("-c", "--config", default='config.ini', nargs='?', help="The config file Path.")
+    parser.add_argument("-a", "--auto-exit", dest='autoexit', action="store_true", help="Auto exit after program complete")
     args = parser.parse_args()
-    if args.file == '':
-        return ''
-    else:
-        return args.file
 
-def movie_lists(escape_folder):
-    escape_folder = re.split('[,，]', escape_folder)
+    return args.file, args.config, args.autoexit
+
+def movie_lists(root, escape_folder):
+    for folder in escape_folder:
+        if folder in root:
+            return []
     total = []
     file_type = ['.mp4', '.avi', '.rmvb', '.wmv', '.mov', '.mkv', '.flv', '.ts', '.webm', '.MP4', '.AVI', '.RMVB', '.WMV','.MOV', '.MKV', '.FLV', '.TS', '.WEBM', ]
-    file_root = os.getcwd()
-    for root, dirs, files in os.walk(file_root):
-        flag_escape = 0
-        for folder in escape_folder:
-            if folder in root:
-                flag_escape = 1
-                break
-        if flag_escape == 1:
-            continue
-        for f in files:
-            if os.path.splitext(f)[1] in file_type:
-                path = os.path.join(root, f)
-                path = path.replace(file_root, '.')
-                total.append(path)
+    dirs = os.listdir(root)
+    for entry in dirs:
+        f = os.path.join(root, entry)
+        if os.path.isdir(f):
+            total += movie_lists(f, escape_folder)
+        elif os.path.splitext(f)[1] in file_type:
+            total.append(f)
     return total
 
 
-def CreatFailedFolder(failed_folder):
+def create_failed_folder(failed_folder):
     if not os.path.exists(failed_folder + '/'):  # 新建failed文件夹
         try:
             os.makedirs(failed_folder + '/')
@@ -85,7 +76,8 @@ def getNumber(filepath,absolute_path = False):
         filepath.strip('22-sht.me').strip('-HD').strip('-hd')
         filename = str(re.sub("\[\d{4}-\d{1,2}-\d{1,2}\] - ", "", filepath))  # 去除文件名中时间
         if 'FC2' or 'fc2' in filename:
-            filename = filename.replace('-PPV', '').replace('PPV-', '').replace('FC2PPV-','FC2-').replace('FC2PPV_','FC2-')
+            filename = filename.replace('-PPV', '').replace('PPV-', '').replace('FC2PPV-', 'FC2-').replace('FC2PPV_', 'FC2-')
+            filename = filename.replace('-ppv', '').replace('ppv-', '').replace('fc2ppv-', 'FC2-').replace('fc2ppv_', 'FC2-')
         file_number = re.search(r'\w+-\w+', filename, re.A).group()
         return file_number
     else:  # 提取不含减号-的番号，FANZA CID
@@ -95,68 +87,74 @@ def getNumber(filepath,absolute_path = False):
             return re.search(r'(.+?)\.', filepath)[0]
 
 
+def create_data_and_move(file_path: str, c: config.Config):
+    # Normalized number, eg: 111xxx-222.mp4 -> xxx-222.mp4
+    n_number = getNumber(file_path, absolute_path=True)
+
+    try:
+        print("[!]Making Data for [{}], the number is [{}]".format(file_path, n_number))
+        core_main(file_path, n_number, c)
+        print("[*]======================================================")
+    except Exception as err:
+        print("[-] [{}] ERROR:".format(file_path))
+        print('[-]', err)
+
+        if c.soft_link():
+            print("[-]Link {} to failed folder".format(file_path))
+            os.symlink(file_path, str(os.getcwd()) + "/" + conf.failed_folder() + "/")
+        else:
+            try:
+                print("[-]Move [{}] to failed folder".format(file_path))
+                shutil.move(file_path, str(os.getcwd()) + "/" + conf.failed_folder() + "/")
+            except Exception as err:
+                print('[!]', err)
+
+
 if __name__ == '__main__':
-    version = '2.8.2'
-    config_file = 'config.ini'
-    config = ConfigParser()
-    config.read(config_file, encoding='UTF-8')
-    success_folder = config['common']['success_output_folder']
-    failed_folder = config['common']['failed_output_folder']  # 失败输出目录
-    escape_folder = config['escape']['folders']  # 多级目录刮削需要排除的目录
+    version = '3.3'
+
+    # Parse command line args
+    single_file_path, config_file, auto_exit = argparse_function()
+
+    # Read config.ini
+    conf = config.Config(path=config_file)
+
+    version_print = 'Version ' + version
     print('[*]================== AV Data Capture ===================')
-    print('[*]                    Version ' + version)
+    print('[*]' + version_print.center(54))
     print('[*]======================================================')
 
-    UpdateCheck(version)
-    CreatFailedFolder(failed_folder)
-    os.chdir(os.getcwd())
-    movie_list = movie_lists(escape_folder)
+    if conf.update_check():
+        check_update(version)
 
-    #========== 野鸡番号拖动 ==========
-    number_argparse=argparse_get_file()
-    if not number_argparse == '':
-        print("[!]Making Data for   [" + number_argparse + "], the number is [" + getNumber(number_argparse,absolute_path = True) + "]")
-        core_main(number_argparse, getNumber(number_argparse,absolute_path = True))
-        print("[*]======================================================")
-        CEF(success_folder)
-        CEF(failed_folder)
+    create_failed_folder(conf.failed_folder())
+    os.chdir(os.getcwd())
+    movie_list = movie_lists(".", re.split("[,，]", conf.escape_folder()))
+
+    # ========== 野鸡番号拖动 ==========
+    if not single_file_path == '':
+        create_data_and_move(single_file_path, conf)
+        CEF(conf.success_folder())
+        CEF(conf.failed_folder())
         print("[+]All finished!!!")
         input("[+][+]Press enter key exit, you can check the error messge before you exit.")
-        os._exit(0)
+        exit()
     # ========== 野鸡番号拖动 ==========
 
     count = 0
     count_all = str(len(movie_list))
     print('[+]Find', count_all, 'movies')
-    if config['common']['soft_link'] == '1':
+    if conf.soft_link():
         print('[!] --- Soft link mode is ENABLE! ----')
-    for i in movie_list:  # 遍历电影列表 交给core处理
+    for movie_path in movie_list:  # 遍历电影列表 交给core处理
         count = count + 1
         percentage = str(count / int(count_all) * 100)[:4] + '%'
         print('[!] - ' + percentage + ' [' + str(count) + '/' + count_all + '] -')
-        # print("[!]Making Data for   [" + i + "], the number is [" + getNumber(i) + "]")
-        # core_main(i, getNumber(i))
-        # print("[*]======================================================")
-        try:
-            print("[!]Making Data for   [" + i + "], the number is [" + getNumber(i) + "]")
-            core_main(i, getNumber(i))
-            print("[*]======================================================")
-        except:  # 番号提取异常
-            print('[-]' + i + ' Cannot catch the number :')
-            if config['common']['soft_link'] == '1':
-                print('[-]Link', i, 'to failed folder')
-                os.symlink(i, str(os.getcwd()) + '/' + failed_folder + '/')
-            else:
-                try:
-                    print('[-]Move ' + i + ' to failed folder')
-                    shutil.move(i, str(os.getcwd()) + '/' + failed_folder + '/')
-                except FileExistsError:
-                    print('[!]File exists in failed!')
-                except:
-                    print('[+]skip')
-            continue
+        create_data_and_move(movie_path, conf)
 
-    CEF(success_folder)
-    CEF(failed_folder)
+    CEF(conf.success_folder())
+    CEF(conf.failed_folder())
     print("[+]All finished!!!")
-    input("[+][+]Press enter key exit, you can check the error messge before you exit.")
+    if auto_exit:
+        exit(0)
+    input("[+][+]Press enter key exit, you can check the error message before you exit.")
